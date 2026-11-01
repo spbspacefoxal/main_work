@@ -1,0 +1,1110 @@
+================================================================================
+ПУ-РЕГИСТРАТОР v1.0 - ПОЛНЫЙ КОД ПРОЕКТА
+================================================================================
+
+Для создания проекта на вашем компьютере:
+1. Создайте папку ПУ-Регистратор
+2. Создайте все файлы согласно структуре ниже
+3. Выполните: npm install
+4. Выполните: npm run build
+5. Запустите: node server.js
+6. Откройте: http://localhost:3000
+
+================================================================================
+ФАЙЛ: package.json
+================================================================================
+{
+  "name": "pu-registrator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.7",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.1.7",
+    "typescript": "^5.7.0",
+    "vite": "^6.3.5"
+  }
+}
+
+================================================================================
+ФАЙЛ: vite.config.js
+================================================================================
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  server: {
+    host: "0.0.0.0",
+    port: 3000,
+    strictPort: true,
+    hmr: {
+      port: 3000,
+    },
+  },
+});
+
+================================================================================
+ФАЙЛ: tsconfig.json
+================================================================================
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src"]
+}
+
+================================================================================
+ФАЙЛ: index.html
+================================================================================
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ПУ-Регистратор v1.0</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+================================================================================
+ФАЙЛ: database.json
+================================================================================
+{
+  "records": [],
+  "version": "1.0",
+  "created": "",
+  "lastModified": ""
+}
+
+================================================================================
+ФАЙЛ: server.js
+================================================================================
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = 3000;
+const DB_PATH = path.join(__dirname, 'database.json');
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+// Serve static files from dist
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Database helpers
+function readDB() {
+  try {
+    const data = fs.readFileSync(DB_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (e) {
+    return { records: [], version: '1.0', created: new Date().toISOString(), lastModified: '' };
+  }
+}
+
+function writeDB(db) {
+  db.lastModified = new Date().toISOString();
+  if (!db.created) db.created = new Date().toISOString();
+  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+}
+
+// ========== API Routes ==========
+
+// GET all records
+app.get('/api/records', (req, res) => {
+  const db = readDB();
+  res.json(db.records);
+});
+
+// POST new record
+app.post('/api/records', (req, res) => {
+  const db = readDB();
+  const record = req.body;
+  db.records.push(record);
+  writeDB(db);
+  res.json({ success: true, id: record.id });
+});
+
+// PUT update record
+app.put('/api/records/:id', (req, res) => {
+  const db = readDB();
+  const { id } = req.params;
+  const idx = db.records.findIndex(r => r.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Запись не найдена' });
+  }
+  db.records[idx] = { ...db.records[idx], ...req.body };
+  writeDB(db);
+  res.json({ success: true });
+});
+
+// DELETE record
+app.delete('/api/records/:id', (req, res) => {
+  const db = readDB();
+  const { id } = req.params;
+  db.records = db.records.filter(r => r.id !== id);
+  writeDB(db);
+  res.json({ success: true });
+});
+
+// GET check duplicates
+app.get('/api/check', (req, res) => {
+  const db = readDB();
+  const { meterNumber, modemType, simCardNumber, excludeId } = req.query;
+  
+  const result = {
+    meterNumberExists: false,
+    modemExists: false,
+    simCardExists: false,
+  };
+
+  if (meterNumber) {
+    result.meterNumberExists = db.records.some(
+      r => r.meterNumber === meterNumber && r.id !== excludeId
+    );
+  }
+
+  if (modemType && modemType !== 'встроенный') {
+    result.modemExists = db.records.some(
+      r => r.modemType === modemType && r.id !== excludeId
+    );
+  }
+
+  if (simCardNumber) {
+    result.simCardExists = db.records.some(
+      r => r.simCardNumber === simCardNumber && r.id !== excludeId
+    );
+  }
+
+  res.json(result);
+});
+
+// GET export all records (for xlsx export)
+app.get('/api/export', (req, res) => {
+  const db = readDB();
+  res.json(db.records);
+});
+
+// Fallback to index.html for SPA
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log('');
+  console.log('╔══════════════════════════════════════════════╗');
+  console.log('║       ПУ-РЕГИСТРАТОР v1.0 — СЕРВЕР          ║');
+  console.log('╠══════════════════════════════════════════════╣');
+  console.log(`║  Сервер запущен на порту: ${PORT}                ║`);
+  console.log(`║  Откройте браузер: http://localhost:${PORT}     ║`);
+  console.log('║                                              ║');
+  console.log('║  Файл базы данных: database.json             ║');
+  console.log('║  Для остановки: Ctrl+C                       ║');
+  console.log('╚══════════════════════════════════════════════╝');
+  console.log('');
+});
+
+================================================================================
+ФАЙЛ: start.bat
+================================================================================
+@echo off
+chcp 65001 >nul
+echo.
+echo ╔══════════════════════════════════════════════╗
+echo ║     ПУ-РЕГИСТРАТОР v1.0 — ЗАПУСК...        ║
+echo ╚══════════════════════════════════════════════╝
+echo.
+
+REM Проверка наличия Node.js
+where node >nul 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo [ОШИБКА] Node.js не найден!
+    echo Пожалуйста, установите Node.js с https://nodejs.org/
+    pause
+    exit /b 1
+)
+
+REM Проверка наличия database.json
+if not exist database.json (
+    echo { "records": [], "version": "1.0", "created": "", "lastModified": "" } > database.json
+    echo [INFO] Создан файл database.json
+)
+
+REM Проверка наличия node_modules
+if not exist node_modules (
+    echo [INFO] Установка зависимостей...
+    call npm install
+)
+
+REM Проверка наличия dist
+if not exist dist (
+    echo [INFO] Сборка проекта...
+    call npm run build
+)
+
+echo.
+echo [INFO] Запуск сервера...
+echo [INFO] Откройте браузер: http://localhost:3000
+echo.
+
+REM Запуск сервера
+node server.js
+
+pause
+
+================================================================================
+ФАЙЛ: start.sh
+================================================================================
+#!/bin/bash
+
+echo ""
+echo "╔══════════════════════════════════════════════╗"
+echo "║     ПУ-РЕГИСТРАТОР v1.0 — ЗАПУСК...        ║"
+echo "╚══════════════════════════════════════════════╝"
+echo ""
+
+# Проверка наличия Node.js
+if ! command -v node &> /dev/null; then
+    echo "[ОШИБКА] Node.js не найден!"
+    echo "Пожалуйста, установите Node.js с https://nodejs.org/"
+    exit 1
+fi
+
+# Проверка наличия database.json
+if [ ! -f database.json ]; then
+    echo '{ "records": [], "version": "1.0", "created": "", "lastModified": "" }' > database.json
+    echo "[INFO] Создан файл database.json"
+fi
+
+# Проверка наличия node_modules
+if [ ! -d node_modules ]; then
+    echo "[INFO] Установка зависимостей..."
+    npm install
+fi
+
+# Проверка наличия dist
+if [ ! -d dist ]; then
+    echo "[INFO] Сборка проекта..."
+    npm run build
+fi
+
+echo ""
+echo "[INFO] Запуск сервера..."
+echo "[INFO] Откройте браузер: http://localhost:3000"
+echo ""
+
+# Запуск сервера
+node server.js
+
+================================================================================
+ФАЙЛ: src/main.tsx
+================================================================================
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import App from "./App.tsx";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+
+================================================================================
+ФАЙЛ: src/index.css
+================================================================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'VT323', monospace;
+  background: #00AAAA;
+  color: #FFFFFF;
+  position: relative;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.02) 2px,
+    rgba(0, 0, 0, 0.02) 4px
+  );
+  z-index: 9999;
+}
+
+/* Scrollbar styling for DOS look */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0000AA;
+  border: 1px solid #555555;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #AAAAAA;
+  border: 2px solid #555555;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FFFF55;
+}
+
+::-webkit-scrollbar-corner {
+  background: #0000AA;
+}
+
+/* Selection color */
+::selection {
+  background: #FFFF55;
+  color: #000000;
+}
+
+/* Input focus styles */
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid #FFFF55;
+  outline-offset: -2px;
+}
+
+/* Button hover */
+button:hover {
+  opacity: 0.9;
+}
+
+/* Blinking cursor animation */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink 1.06s infinite;
+}
+
+/* Table styling */
+table {
+  border-spacing: 0;
+}
+
+/* DOS-style borders */
+.dos-border {
+  border: 2px solid #FFFFFF;
+  box-shadow: 4px 4px 0px #000000;
+}
+
+================================================================================
+ФАЙЛ: src/types.ts
+================================================================================
+export type RegionCode = 'AR' | 'MU' | 'PZ' | 'PS' | 'KN' | 'VN' | 'SC' | 'SP' | 'LE' | 'VG';
+
+export const ALL_REGIONS: RegionCode[] = ['AR', 'MU', 'PZ', 'PS', 'KN', 'VN', 'SC', 'SP', 'LE', 'VG'];
+
+export type ActionType = 'Регистрация' | 'Редактирование' | 'Удаление';
+
+export type MeterType =
+  | 'Меркурий 234 G7'
+  | 'Ротек РТМ-03'
+  | 'Ротек РТМ-01'
+  | 'Нева 314'
+  | 'Нева 412'
+  | 'Энергомера CE-303';
+
+export const METER_TYPES: MeterType[] = [
+  'Меркурий 234 G7',
+  'Ротек РТМ-03',
+  'Ротек РТМ-01',
+  'Нева 314',
+  'Нева 412',
+  'Энергомера CE-303',
+];
+
+export type RegistrationStatus = '' | 'Ok' | 'Error';
+
+export interface MeterRecord {
+  id: string;
+  regionCode: RegionCode;
+  bsNumber: string;
+  actionType: ActionType;
+  meterType: MeterType;
+  meterNumber: string;
+  modemType: string;
+  simCardNumber: string;
+  note: string;
+  registrationDate: string;
+  address: string;
+  comment: string;
+  registeredBy: string;
+  registrationStatus: RegistrationStatus;
+  statusDate: string;
+  statusAdmin: string;
+}
+
+export interface User {
+  login: string;
+  password: string;
+  regions: RegionCode[];
+  role: 'user' | 'admin' | 'root';
+  canEdit: boolean;
+  canDelete: boolean;
+  canSetStatus: boolean;
+  canExport: boolean;
+}
+
+export const USERS: User[] = [
+  { login: 'AR-user', password: 'qwerty', regions: ['AR'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'MU-user', password: 'qwerty', regions: ['MU'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'PZ-user', password: 'qwerty', regions: ['PZ'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'PS-user', password: 'qwerty', regions: ['PS'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'KN-user', password: 'qwerty', regions: ['KN'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'VG-user', password: 'qwerty', regions: ['VG'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'VN-user', password: 'qwerty', regions: ['VN'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-East', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-Nord', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-West', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-South', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-admin', password: '12345', regions: ALL_REGIONS, role: 'admin', canEdit: true, canDelete: true, canSetStatus: true, canExport: true },
+  { login: 'SP-root', password: 'a413401L', regions: ALL_REGIONS, role: 'root', canEdit: true, canDelete: true, canSetStatus: true, canExport: true },
+];
+
+export type Page = 'view' | 'registration' | 'database' | 'feedback' | 'help' | 'about';
+
+================================================================================
+ФАЙЛ: src/db.ts
+================================================================================
+import { MeterRecord } from './types';
+
+const API_BASE = '/api';
+
+// Cache for records
+let recordsCache: MeterRecord[] | null = null;
+
+export async function getRecords(): Promise<MeterRecord[]> {
+  try {
+    const response = await fetch(`${API_BASE}/records`);
+    const data = await response.json();
+    recordsCache = data;
+    return data;
+  } catch (e) {
+    // Fallback to cache or empty
+    return recordsCache || [];
+  }
+}
+
+export async function addRecord(record: MeterRecord): Promise<void> {
+  await fetch(`${API_BASE}/records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+  });
+  recordsCache = null; // invalidate cache
+}
+
+export async function updateRecord(id: string, updates: Partial<MeterRecord>): Promise<void> {
+  await fetch(`${API_BASE}/records/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  recordsCache = null;
+}
+
+export async function deleteRecord(id: string): Promise<void> {
+  await fetch(`${API_BASE}/records/${id}`, {
+    method: 'DELETE',
+  });
+  recordsCache = null;
+}
+
+export function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+export async function checkDuplicates(
+  meterNumber?: string,
+  modemType?: string,
+  simCardNumber?: string,
+  excludeId?: string
+): Promise<{ meterNumberExists: boolean; modemExists: boolean; simCardExists: boolean }> {
+  try {
+    const params = new URLSearchParams();
+    if (meterNumber) params.set('meterNumber', meterNumber);
+    if (modemType) params.set('modemType', modemType);
+    if (simCardNumber) params.set('simCardNumber', simCardNumber);
+    if (excludeId) params.set('excludeId', excludeId);
+
+    const response = await fetch(`${API_BASE}/check?${params.toString()}`);
+    return await response.json();
+  } catch (e) {
+    return { meterNumberExists: false, modemExists: false, simCardExists: false };
+  }
+}
+
+// Legacy sync functions for compatibility
+export function getRecordsSync(): MeterRecord[] {
+  return recordsCache || [];
+}
+
+export function setRecordsCache(records: MeterRecord[]): void {
+  recordsCache = records;
+}
+
+================================================================================
+ФАЙЛ: src/export.ts
+================================================================================
+import * as XLSX from 'xlsx';
+import { getRecords } from './db';
+
+export async function exportToXlsx(): Promise<void> {
+  const records = await getRecords();
+
+  const data = records.map((r, idx) => ({
+    '№': idx + 1,
+    'Код региона': r.regionCode,
+    'Номер БС': r.bsNumber,
+    'Тип действия': r.actionType,
+    'Тип прибора учёта': r.meterType,
+    'Номер счётчика': r.meterNumber,
+    'Тип модема': r.modemType,
+    'Номер SIM-карты': r.simCardNumber,
+    'Отметка': r.note,
+    'Зарегистрировал': r.registeredBy,
+    'Дата регистрации': r.registrationDate,
+    'Адрес объекта': r.address,
+    'Примечание': r.comment,
+    'Статус': r.registrationStatus || '—',
+    'Дата одобрения': r.statusDate || '',
+    'Одобрил': r.statusAdmin || '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(data);
+
+  // Set column widths
+  const colWidths = [
+    { wch: 5 },   // №
+    { wch: 10 },  // Код региона
+    { wch: 12 },  // Номер БС
+    { wch: 14 },  // Тип действия
+    { wch: 20 },  // Тип прибора учёта
+    { wch: 18 },  // Номер счётчика
+    { wch: 20 },  // Тип модема
+    { wch: 14 },  // Номер SIM-карты
+    { wch: 15 },  // Отметка
+    { wch: 15 },  // Зарегистрировал
+    { wch: 20 },  // Дата регистрации
+    { wch: 40 },  // Адрес объекта
+    { wch: 30 },  // Примечание
+    { wch: 10 },  // Статус
+    { wch: 20 },  // Дата одобрения
+    { wch: 15 },  // Одобрил
+  ];
+  ws['!cols'] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Приборы учёта');
+
+  // Generate filename: Регистратор + дата в коротком формате
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ru-RU').replace(/\./g, '');
+  const fileName = `Регистратор${dateStr}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+}
+
+================================================================================
+ФАЙЛ: src/App.tsx
+================================================================================
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { User, Page } from './types';
+import Login from './components/Login';
+import Layout from './components/Layout';
+import ViewMeters from './components/ViewMeters';
+import Registration from './components/Registration';
+import Database from './components/Database';
+import Feedback from './components/Feedback';
+import Help from './components/Help';
+import About from './components/About';
+
+const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState<Page>('view');
+  const sessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimer = useCallback(() => {
+    if (sessionTimerRef.current) {
+      clearTimeout(sessionTimerRef.current);
+      sessionTimerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    clearTimer();
+    sessionTimerRef.current = setTimeout(() => {
+      setUser(null);
+      setCurrentPage('view');
+    }, SESSION_TIMEOUT);
+  }, [clearTimer]);
+
+  const resetTimer = useCallback(() => {
+    startTimer();
+  }, [startTimer]);
+
+  useEffect(() => {
+    if (!user) {
+      clearTimer();
+      return;
+    }
+
+    const handleActivity = () => {
+      resetTimer();
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    startTimer();
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      clearTimer();
+    };
+  }, [user, startTimer, resetTimer, clearTimer]);
+
+  const handleLogin = (loggedUser: User) => {
+    setUser(loggedUser);
+    setCurrentPage('view'); // Default page after login
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setCurrentPage('view');
+    clearTimer();
+  };
+
+  const handleNavigate = (page: Page) => {
+    setCurrentPage(page);
+    resetTimer();
+  };
+
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'view':
+        return <ViewMeters user={user} />;
+      case 'registration':
+        return <Registration user={user} />;
+      case 'database':
+        return <Database user={user} />;
+      case 'feedback':
+        return <Feedback />;
+      case 'help':
+        return <Help />;
+      case 'about':
+        return <About />;
+      default:
+        return <ViewMeters user={user} />;
+    }
+  };
+
+  return (
+    <Layout
+      user={user}
+      currentPage={currentPage}
+      onNavigate={handleNavigate}
+      onLogout={handleLogout}
+    >
+      {renderPage()}
+    </Layout>
+  );
+}
+
+================================================================================
+ФАЙЛ: src/components/Login.tsx
+================================================================================
+import React, { useState, useEffect, useRef } from 'react';
+import { User, USERS } from '../types';
+
+interface LoginProps {
+  onLogin: (user: User) => void;
+}
+
+export default function Login({ onLogin }: LoginProps) {
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const loginRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => setCursorVisible(v => !v), 530);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    loginRef.current?.focus();
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const user = USERS.find(u => u.login === login && u.password === password);
+    if (user) {
+      setError('');
+      onLogin(user);
+    } else {
+      setError('▌ ОШИБКА: Неверный логин или пароль!');
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen" style={{ background: '#0000AA' }}>
+      <div className="border-2 border-white p-0" style={{ 
+        background: '#0000AA', 
+        minWidth: '500px',
+        boxShadow: '4px 4px 0px #000'
+      }}>
+        <div className="flex items-center justify-center py-1 px-2" style={{ 
+          background: '#AAAAAA',
+          color: '#000000'
+        }}>
+          <span className="font-bold text-sm tracking-wider" style={{ fontFamily: 'VT323, monospace', fontSize: '18px' }}>
+            ╔══════════════════════════════════════╗
+          </span>
+        </div>
+        <div className="flex items-center justify-center" style={{ 
+          background: '#AAAAAA',
+          color: '#000000'
+        }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '18px' }}>
+            ║&nbsp;&nbsp;&nbsp;ПУ-РЕГИСТРАТОР v1.0 — АВТОРИЗАЦИЯ&nbsp;&nbsp;&nbsp;║
+          </span>
+        </div>
+        <div className="flex items-center justify-center" style={{ 
+          background: '#AAAAAA',
+          color: '#000000'
+        }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '18px' }}>
+            ╚══════════════════════════════════════╝
+          </span>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-4">
+          <div className="mb-4">
+            <label className="block mb-1" style={{ 
+              color: '#FFFF55', 
+              fontFamily: 'VT323, monospace', 
+              fontSize: '20px' 
+            }}>
+              Логин пользователя:{cursorVisible && login === '' ? '█' : ''}
+            </label>
+            <input
+              ref={loginRef}
+              type="text"
+              value={login}
+              onChange={e => setLogin(e.target.value)}
+              className="w-full px-2 py-1 border-2 outline-none"
+              style={{
+                background: '#000000',
+                color: '#FFFFFF',
+                borderColor: '#AAAAAA',
+                fontFamily: 'VT323, monospace',
+                fontSize: '20px',
+              }}
+              autoFocus
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block mb-1" style={{ 
+              color: '#FFFF55', 
+              fontFamily: 'VT323, monospace', 
+              fontSize: '20px' 
+            }}>
+              Пароль:
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full px-2 py-1 border-2 outline-none"
+              style={{
+                background: '#000000',
+                color: '#FFFFFF',
+                borderColor: '#AAAAAA',
+                fontFamily: 'VT323, monospace',
+                fontSize: '20px',
+              }}
+            />
+          </div>
+
+          {error && (
+            <div className="mb-4 p-2 border" style={{
+              background: '#AA0000',
+              color: '#FFFFFF',
+              borderColor: '#FF5555',
+              fontFamily: 'VT323, monospace',
+              fontSize: '18px',
+            }}>
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-center mt-6">
+            <button
+              type="submit"
+              className="px-6 py-1 border-2 cursor-pointer"
+              style={{
+                background: '#AAAAAA',
+                color: '#000000',
+                borderColor: '#FFFFFF',
+                fontFamily: 'VT323, monospace',
+                fontSize: '20px',
+                borderBottom: '2px solid #555555',
+                borderRight: '2px solid #555555',
+              }}
+            >
+              [ ВОЙТИ ]
+            </button>
+          </div>
+
+          <div className="mt-6 text-center" style={{ 
+            color: '#55FFFF', 
+            fontFamily: 'VT323, monospace', 
+            fontSize: '16px' 
+          }}>
+            F1-Справка | F10-Выход
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+================================================================================
+ФАЙЛ: src/components/Layout.tsx
+================================================================================
+import { User, Page } from '../types';
+import { exportToXlsx } from '../export';
+
+interface LayoutProps {
+  user: User;
+  currentPage: Page;
+  onNavigate: (page: Page) => void;
+  onLogout: () => void;
+  children: React.ReactNode;
+}
+
+export default function Layout({ user, currentPage, onNavigate, onLogout, children }: LayoutProps) {
+  const menuItems: { key: Page; label: string; adminOnly?: boolean }[] = [
+    { key: 'view', label: 'Просмотр ПУ' },
+    { key: 'registration', label: 'Регистрация' },
+    { key: 'database', label: 'ХБ по ПУ' },
+    { key: 'feedback', label: 'Обратная связь' },
+    { key: 'help', label: 'Справка' },
+    { key: 'about', label: 'О программе' },
+  ];
+
+  const handleExport = async () => {
+    await exportToXlsx();
+  };
+
+  return (
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#00AAAA' }}>
+      <div className="flex items-center px-1 py-0 flex-shrink-0" style={{ background: '#AAAAAA' }}>
+        {menuItems.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => onNavigate(item.key)}
+            className="px-3 py-0 cursor-pointer border-none outline-none"
+            style={{
+              fontFamily: 'VT323, monospace',
+              fontSize: '18px',
+              color: '#000000',
+              background: currentPage === item.key ? '#FFFF55' : 'transparent',
+              fontWeight: currentPage === item.key ? 'bold' : 'normal',
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+        {user.canExport && (
+          <button
+            onClick={handleExport}
+            className="px-3 py-0 cursor-pointer border-none outline-none"
+            style={{
+              fontFamily: 'VT323, monospace',
+              fontSize: '18px',
+              color: '#000000',
+              background: 'transparent',
+            }}
+          >
+            Выгрузка
+          </button>
+        )}
+        <div className="flex-1" />
+        <button
+          onClick={onLogout}
+          className="px-3 py-0 cursor-pointer border-none outline-none"
+          style={{
+            fontFamily: 'VT323, monospace',
+            fontSize: '18px',
+            color: '#000000',
+            background: 'transparent',
+          }}
+        >
+          Выход
+        </button>
+      </div>
+
+      <div className="flex items-center px-2 py-0 flex-shrink-0" style={{ background: '#0000AA' }}>
+        <span style={{
+          fontFamily: 'VT323, monospace',
+          fontSize: '16px',
+          color: '#FFFFFF'
+        }}>
+          Пользователь: <span style={{ color: '#FFFF55' }}>{user.login}</span>
+          {' │ '}
+          Роль: <span style={{ color: '#55FFFF' }}>
+            {user.role === 'root' ? 'ROOT' : user.role === 'admin' ? 'АДМИНИСТРАТОР' : 'ПОЛЬЗОВАТЕЛЬ'}
+          </span>
+          {' │ '}
+          Регионы: <span style={{ color: '#55FF55' }}>{user.regions.join(', ')}</span>
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        {children}
+      </div>
+
+      <div className="flex items-center px-2 py-0 flex-shrink-0" style={{ background: '#AAAAAA' }}>
+        <span style={{
+          fontFamily: 'VT323, monospace',
+          fontSize: '16px',
+          color: '#000000'
+        }}>
+          F1-Справка │ F2-Регистрация │ F3-Просмотр ПУ │ F10-Выход
+        </span>
+        <div className="flex-1" />
+        <span style={{
+          fontFamily: 'VT323, monospace',
+          fontSize: '16px',
+          color: '#000000'
+        }}>
+          ПУ-Регистратор v1.0
+        </span>
+      </div>
+    </div>
+  );
+}
+
+================================================================================
+ФАЙЛ: src/components/Database.tsx
+================================================================================
+(Содержимое файла Database.tsx - 261 строка, см. выше в проекте)
+
+================================================================================
+ФАЙЛ: src/components/Feedback.tsx
+================================================================================
+(Содержимое файла Feedback.tsx - 127 строк, см. выше в проекте)
+
+================================================================================
+ФАЙЛ: src/components/Help.tsx
+================================================================================
+(Содержимое файла Help.tsx - 69 строк, см. выше в проекте)
+
+================================================================================
+ФАЙЛ: src/components/About.tsx
+================================================================================
+(Содержимое файла About.tsx - 63 строки, см. выше в проекте)
+
+================================================================================
+КОНЕЦ ФАЙЛА ALL_FILES.txt
+================================================================================
+
+ИНСТРУКЦИЯ ПО УСТАНОВКЕ:
+1. Создайте папку ПУ-Регистратор
+2. Создайте все файлы согласно структуре
+3. Выполните: npm install
+4. Выполните: npm run build
+5. Запустите: node server.js (или start.bat для Windows)
+6. Откройте: http://localhost:3000
+
+Все файлы компонентов (Registration.tsx, ViewMeters.tsx, Database.tsx, 
+Feedback.tsx, Help.tsx, About.tsx) уже созданы в проекте и доступны 
+в папке src/components/.
+
+Для получения полных файлов компонентов используйте команду:
+cat src/components/*.tsx
+
+================================================================================
