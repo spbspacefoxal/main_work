@@ -1,57 +1,76 @@
 import { MeterRecord } from './types';
 
-const DB_KEY = 'meter_records_db';
+const API_BASE = '/api';
 
-export function getRecords(): MeterRecord[] {
-  const data = localStorage.getItem(DB_KEY);
-  if (!data) return [];
+// Cache for records
+let recordsCache: MeterRecord[] | null = null;
+
+export async function getRecords(): Promise<MeterRecord[]> {
   try {
-    return JSON.parse(data);
-  } catch {
-    return [];
+    const response = await fetch(`${API_BASE}/records`);
+    const data = await response.json();
+    recordsCache = data;
+    return data;
+  } catch (e) {
+    // Fallback to cache or empty
+    return recordsCache || [];
   }
 }
 
-export function saveRecords(records: MeterRecord[]): void {
-  localStorage.setItem(DB_KEY, JSON.stringify(records));
+export async function addRecord(record: MeterRecord): Promise<void> {
+  await fetch(`${API_BASE}/records`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+  });
+  recordsCache = null; // invalidate cache
 }
 
-export function addRecord(record: MeterRecord): void {
-  const records = getRecords();
-  records.push(record);
-  saveRecords(records);
+export async function updateRecord(id: string, updates: Partial<MeterRecord>): Promise<void> {
+  await fetch(`${API_BASE}/records/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  recordsCache = null;
 }
 
-export function updateRecord(id: string, updates: Partial<MeterRecord>): void {
-  const records = getRecords();
-  const idx = records.findIndex(r => r.id === id);
-  if (idx !== -1) {
-    records[idx] = { ...records[idx], ...updates };
-    saveRecords(records);
-  }
-}
-
-export function deleteRecord(id: string): void {
-  const records = getRecords();
-  saveRecords(records.filter(r => r.id !== id));
+export async function deleteRecord(id: string): Promise<void> {
+  await fetch(`${API_BASE}/records/${id}`, {
+    method: 'DELETE',
+  });
+  recordsCache = null;
 }
 
 export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
-export function checkMeterNumberExists(meterNumber: string, excludeId?: string): boolean {
-  const records = getRecords();
-  return records.some(r => r.meterNumber === meterNumber && r.id !== excludeId);
+export async function checkDuplicates(
+  meterNumber?: string,
+  modemType?: string,
+  simCardNumber?: string,
+  excludeId?: string
+): Promise<{ meterNumberExists: boolean; modemExists: boolean; simCardExists: boolean }> {
+  try {
+    const params = new URLSearchParams();
+    if (meterNumber) params.set('meterNumber', meterNumber);
+    if (modemType) params.set('modemType', modemType);
+    if (simCardNumber) params.set('simCardNumber', simCardNumber);
+    if (excludeId) params.set('excludeId', excludeId);
+
+    const response = await fetch(`${API_BASE}/check?${params.toString()}`);
+    return await response.json();
+  } catch (e) {
+    return { meterNumberExists: false, modemExists: false, simCardExists: false };
+  }
 }
 
-export function checkModemExists(modemType: string, excludeId?: string): boolean {
-  if (modemType === 'встроенный') return false;
-  const records = getRecords();
-  return records.some(r => r.modemType === modemType && r.id !== excludeId);
+// Legacy sync functions for compatibility
+export function getRecordsSync(): MeterRecord[] {
+  return recordsCache || [];
 }
 
-export function checkSimCardExists(simCardNumber: string, excludeId?: string): boolean {
-  const records = getRecords();
-  return records.some(r => r.simCardNumber === simCardNumber && r.id !== excludeId);
+export function setRecordsCache(records: MeterRecord[]): void {
+  recordsCache = records;
 }

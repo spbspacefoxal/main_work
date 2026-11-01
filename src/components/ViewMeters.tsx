@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, MeterRecord, RegionCode, RegistrationStatus } from '../types';
+import { User, MeterRecord, RegistrationStatus } from '../types';
 import { getRecords, updateRecord, deleteRecord } from '../db';
 
 interface ViewMetersProps {
@@ -13,38 +13,32 @@ interface ColumnFilter {
 export default function ViewMeters({ user }: ViewMetersProps) {
   const [records, setRecords] = useState<MeterRecord[]>([]);
   const [filters, setFilters] = useState<ColumnFilter>({});
-  const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
-  const [filterSearch, setFilterSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState<RegistrationStatus>('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadRecords();
   }, []);
 
-  const loadRecords = () => {
-    const allRecords = getRecords();
+  const loadRecords = async () => {
+    setLoading(true);
+    const allRecords = await getRecords();
     const filtered = allRecords.filter(r => user.regions.includes(r.regionCode));
     setRecords(filtered);
+    setLoading(false);
   };
 
   // Sort: records without "Ok" status first, then by date (newest first for admin)
   const sortedRecords = useMemo(() => {
     const sorted = [...records].sort((a, b) => {
-      // Records without "Ok" first
       const aOk = a.registrationStatus === 'Ok' ? 1 : 0;
       const bOk = b.registrationStatus === 'Ok' ? 1 : 0;
       if (aOk !== bOk) return aOk - bOk;
-
-      // For admin/root: newest first (reverse chronological)
-      if (user.role === 'admin' || user.role === 'root') {
-        return b.id.localeCompare(a.id);
-      }
-      // For regular users: also newest first
       return b.id.localeCompare(a.id);
     });
     return sorted;
-  }, [records, user.role]);
+  }, [records]);
 
   // Apply filters
   const filteredRecords = useMemo(() => {
@@ -64,14 +58,6 @@ export default function ViewMeters({ user }: ViewMetersProps) {
     setFilters(prev => ({ ...prev, [col]: value }));
   };
 
-  const clearFilter = (col: string) => {
-    setFilters(prev => {
-      const newFilters = { ...prev };
-      delete newFilters[col];
-      return newFilters;
-    });
-  };
-
   const clearAllFilters = () => {
     setFilters({});
   };
@@ -81,22 +67,22 @@ export default function ViewMeters({ user }: ViewMetersProps) {
     setEditStatus(status);
   };
 
-  const handleStatusSave = (id: string) => {
+  const handleStatusSave = async (id: string) => {
     const now = new Date().toLocaleString('ru-RU');
-    updateRecord(id, {
+    await updateRecord(id, {
       registrationStatus: editStatus,
       statusDate: editStatus === 'Ok' ? now : '',
       statusAdmin: editStatus === 'Ok' ? user.login : '',
     });
     setEditingId(null);
     setEditStatus('');
-    loadRecords();
+    await loadRecords();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Удалить запись?')) {
-      deleteRecord(id);
-      loadRecords();
+      await deleteRecord(id);
+      await loadRecords();
     }
   };
 
@@ -128,6 +114,16 @@ export default function ViewMeters({ user }: ViewMetersProps) {
 
   const hasActiveFilters = Object.values(filters).some(v => v && v.length > 0);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <span style={{ fontFamily: 'VT323, monospace', fontSize: '24px', color: '#FFFF55' }}>
+          Загрузка данных...█
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col p-2">
       <div className="border-2 flex-1 flex flex-col overflow-hidden" style={{
@@ -157,6 +153,19 @@ export default function ViewMeters({ user }: ViewMetersProps) {
               ✕ Сбросить фильтры
             </button>
           )}
+          <button
+            onClick={loadRecords}
+            className="ml-2 px-2 border cursor-pointer"
+            style={{
+              fontFamily: 'VT323, monospace',
+              fontSize: '14px',
+              background: '#55FFFF',
+              color: '#000000',
+              borderColor: '#00AAAA',
+            }}
+          >
+            ↻ Обновить
+          </button>
         </div>
 
         {/* Table with scroll */}
@@ -167,30 +176,7 @@ export default function ViewMeters({ user }: ViewMetersProps) {
                 <th className="border px-2 py-1 text-left sticky top-0" style={{ borderColor: '#555555', background: '#AAAAAA' }}>№</th>
                 {columns.map(col => (
                   <th key={col.key} className="border px-2 py-1 text-left sticky top-0" style={{ borderColor: '#555555', background: '#AAAAAA', minWidth: '100px' }}>
-                    <div className="flex items-center justify-between">
-                      <span>{col.label}</span>
-                      <button
-                        onClick={() => {
-                          if (activeFilterCol === col.key) {
-                            setActiveFilterCol(null);
-                          } else {
-                            setActiveFilterCol(col.key);
-                            setFilterSearch(filters[col.key] || '');
-                          }
-                        }}
-                        className="ml-1 cursor-pointer px-1 border"
-                        style={{
-                          fontSize: '12px',
-                          background: filters[col.key] ? '#FFFF55' : '#555555',
-                          color: filters[col.key] ? '#000000' : '#FFFFFF',
-                          borderColor: '#333333',
-                        }}
-                        title="Фильтр"
-                      >
-                        ▼
-                      </button>
-                    </div>
-                    {/* Filter input row */}
+                    <div>{col.label}</div>
                     <div className="mt-1">
                       <input
                         type="text"

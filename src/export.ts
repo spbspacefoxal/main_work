@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx';
 import { getRecords } from './db';
 
-export function exportToXlsx(): void {
-  const records = getRecords();
+export async function exportToXlsx(): Promise<void> {
+  const records = await getRecords();
 
   const data = records.map((r, idx) => ({
     '№': idx + 1,

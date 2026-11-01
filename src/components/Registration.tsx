@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, RegionCode, ActionType, MeterType, METER_TYPES, MeterRecord } from '../types';
-import { addRecord, checkMeterNumberExists, checkModemExists, checkSimCardExists, generateId } from '../db';
+import { addRecord, checkDuplicates, generateId } from '../db';
 
 interface RegistrationProps {
   user: User;
@@ -42,7 +42,7 @@ export default function Registration({ user }: RegistrationProps) {
     return v;
   };
 
-  const validate = (): boolean => {
+  const validate = async (): Promise<boolean> => {
     const newErrors: Record<string, string> = {};
 
     // BS Number validation
@@ -62,8 +62,6 @@ export default function Registration({ user }: RegistrationProps) {
       newErrors.meterNumber = 'Введите номер счётчика';
     } else if (!/^\d{1,16}$/.test(meterNumber)) {
       newErrors.meterNumber = 'Номер счётчика: до 16 цифр';
-    } else if (checkMeterNumberExists(meterNumber)) {
-      newErrors.meterNumber = 'Номер счётчика уже есть в базе!';
     }
 
     // Modem validation
@@ -72,8 +70,6 @@ export default function Registration({ user }: RegistrationProps) {
         newErrors.modemType = 'Введите номер модема';
       } else if (!/^\d{4,20}$/.test(modemNumber)) {
         newErrors.modemType = 'Номер модема: от 4 до 20 цифр';
-      } else if (checkModemExists(modemNumber)) {
-        newErrors.modemType = 'Номер модема уже есть в базе!';
       }
     }
 
@@ -83,8 +79,6 @@ export default function Registration({ user }: RegistrationProps) {
       newErrors.simCardNumber = 'Введите номер SIM-карты';
     } else if (!/^7\d{10}$/.test(normalizedSim)) {
       newErrors.simCardNumber = 'Номер SIM: 11 цифр, начиная с 7';
-    } else if (checkSimCardExists(normalizedSim)) {
-      newErrors.simCardNumber = 'Номер SIM-карты уже есть в базе!';
     }
 
     // Address validation
@@ -99,15 +93,34 @@ export default function Registration({ user }: RegistrationProps) {
       newErrors.comment = 'Примечание не более 1000 символов';
     }
 
+    // Check duplicates via API
+    if (Object.keys(newErrors).length === 0) {
+      const duplicates = await checkDuplicates(
+        meterNumber,
+        getModemType(),
+        normalizedSim
+      );
+
+      if (duplicates.meterNumberExists) {
+        newErrors.meterNumber = 'Номер счётчика уже есть в базе!';
+      }
+      if (duplicates.modemExists) {
+        newErrors.modemType = 'Номер модема уже есть в базе!';
+      }
+      if (duplicates.simCardExists) {
+        newErrors.simCardNumber = 'Номер SIM-карты уже есть в базе!';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccess('');
 
-    if (!validate()) return;
+    if (!(await validate())) return;
 
     const normalizedSim = normalizeSimCard(simCardNumber);
     const now = new Date();
@@ -132,7 +145,7 @@ export default function Registration({ user }: RegistrationProps) {
       statusAdmin: '',
     };
 
-    addRecord(record);
+    await addRecord(record);
     setSuccess('✓ Заявка успешно отправлена и сохранена в базе данных!');
 
     // Reset form

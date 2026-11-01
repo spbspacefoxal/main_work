@@ -19,8 +19,8 @@ export default function Layout({ user, currentPage, onNavigate, onLogout, childr
     { key: 'about', label: 'О программе' },
   ];
 
-  const handleExport = () => {
-    exportToXlsx();
+  const handleExport = async () => {
+    await exportToXlsx();
   };
 
   return (
