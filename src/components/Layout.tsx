@@ -1,4 +1,5 @@
 import { User, Page } from '../types';
+import { exportToXlsx } from '../export';
 
 interface LayoutProps {
   user: User;
@@ -9,7 +10,8 @@ interface LayoutProps {
 }
 
 export default function Layout({ user, currentPage, onNavigate, onLogout, children }: LayoutProps) {
-  const menuItems: { key: Page; label: string }[] = [
+  const menuItems: { key: Page; label: string; adminOnly?: boolean }[] = [
+    { key: 'view', label: 'Просмотр ПУ' },
     { key: 'registration', label: 'Регистрация' },
     { key: 'database', label: 'ХБ по ПУ' },
     { key: 'feedback', label: 'Обратная связь' },
@@ -17,10 +19,14 @@ export default function Layout({ user, currentPage, onNavigate, onLogout, childr
     { key: 'about', label: 'О программе' },
   ];
 
+  const handleExport = () => {
+    exportToXlsx();
+  };
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#00AAAA' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#00AAAA' }}>
       {/* Top menu bar */}
-      <div className="flex items-center px-1 py-0" style={{ background: '#AAAAAA' }}>
+      <div className="flex items-center px-1 py-0 flex-shrink-0" style={{ background: '#AAAAAA' }}>
         {menuItems.map((item) => (
           <button
             key={item.key}
@@ -29,7 +35,7 @@ export default function Layout({ user, currentPage, onNavigate, onLogout, childr
             style={{
               fontFamily: 'VT323, monospace',
               fontSize: '18px',
-              color: currentPage === item.key ? '#000000' : '#000000',
+              color: '#000000',
               background: currentPage === item.key ? '#FFFF55' : 'transparent',
               fontWeight: currentPage === item.key ? 'bold' : 'normal',
             }}
@@ -37,6 +43,20 @@ export default function Layout({ user, currentPage, onNavigate, onLogout, childr
             {item.label}
           </button>
         ))}
+        {user.canExport && (
+          <button
+            onClick={handleExport}
+            className="px-3 py-0 cursor-pointer border-none outline-none"
+            style={{
+              fontFamily: 'VT323, monospace',
+              fontSize: '18px',
+              color: '#000000',
+              background: 'transparent',
+            }}
+          >
+            Выгрузка
+          </button>
+        )}
         <div className="flex-1" />
         <button
           onClick={onLogout}
@@ -53,9 +73,9 @@ export default function Layout({ user, currentPage, onNavigate, onLogout, childr
       </div>
 
       {/* User info bar */}
-      <div className="flex items-center px-2 py-0" style={{ background: '#0000AA' }}>
-        <span style={{ 
-          fontFamily: 'VT323, monospace', 
+      <div className="flex items-center px-2 py-0 flex-shrink-0" style={{ background: '#0000AA' }}>
+        <span style={{
+          fontFamily: 'VT323, monospace',
           fontSize: '16px',
           color: '#FFFFFF'
         }}>
@@ -70,22 +90,22 @@ export default function Layout({ user, currentPage, onNavigate, onLogout, childr
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden">
         {children}
       </div>
 
       {/* Bottom status bar */}
-      <div className="flex items-center px-2 py-0" style={{ background: '#AAAAAA' }}>
-        <span style={{ 
-          fontFamily: 'VT323, monospace', 
+      <div className="flex items-center px-2 py-0 flex-shrink-0" style={{ background: '#AAAAAA' }}>
+        <span style={{
+          fontFamily: 'VT323, monospace',
           fontSize: '16px',
           color: '#000000'
         }}>
-          F1-Справка │ F2-Регистрация │ F3-ХБ по ПУ │ F10-Выход
+          F1-Справка │ F2-Регистрация │ F3-Просмотр ПУ │ F10-Выход
         </span>
         <div className="flex-1" />
-        <span style={{ 
-          fontFamily: 'VT323, monospace', 
+        <span style={{
+          fontFamily: 'VT323, monospace',
           fontSize: '16px',
           color: '#000000'
         }}>

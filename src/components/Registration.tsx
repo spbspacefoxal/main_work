@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, RegionCode, ActionType, MeterType, ALL_REGIONS, METER_TYPES, MeterRecord } from '../types';
+import { User, RegionCode, ActionType, MeterType, METER_TYPES, MeterRecord } from '../types';
 import { addRecord, checkMeterNumberExists, checkModemExists, checkSimCardExists, generateId } from '../db';
 
 interface RegistrationProps {
@@ -12,7 +12,8 @@ export default function Registration({ user }: RegistrationProps) {
   const [actionType, setActionType] = useState<ActionType>('Регистрация');
   const [meterType, setMeterType] = useState<MeterType>(METER_TYPES[0]);
   const [meterNumber, setMeterNumber] = useState('');
-  const [modemType, setModemType] = useState('');
+  const [modemMode, setModemMode] = useState<'встроенный' | 'custom'>('встроенный');
+  const [modemNumber, setModemNumber] = useState('');
   const [simCardNumber, setSimCardNumber] = useState('');
   const [note, setNote] = useState('');
   const [address, setAddress] = useState('');
@@ -20,7 +21,6 @@ export default function Registration({ user }: RegistrationProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
-  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setCursorVisible(v => !v), 530);
@@ -30,6 +30,10 @@ export default function Registration({ user }: RegistrationProps) {
   useEffect(() => {
     setBsNumber(regionCode);
   }, [regionCode]);
+
+  const getModemType = (): string => {
+    return modemMode === 'встроенный' ? 'встроенный' : modemNumber;
+  };
 
   const normalizeSimCard = (value: string): string => {
     let v = value.replace(/[^0-9+]/g, '');
@@ -63,12 +67,12 @@ export default function Registration({ user }: RegistrationProps) {
     }
 
     // Modem validation
-    if (!modemType) {
-      newErrors.modemType = 'Укажите тип модема';
-    } else if (modemType !== 'встроенный') {
-      if (!/^\d{4,20}$/.test(modemType)) {
+    if (modemMode === 'custom') {
+      if (!modemNumber) {
+        newErrors.modemType = 'Введите номер модема';
+      } else if (!/^\d{4,20}$/.test(modemNumber)) {
         newErrors.modemType = 'Номер модема: от 4 до 20 цифр';
-      } else if (checkModemExists(modemType)) {
+      } else if (checkModemExists(modemNumber)) {
         newErrors.modemType = 'Номер модема уже есть в базе!';
       }
     }
@@ -116,7 +120,7 @@ export default function Registration({ user }: RegistrationProps) {
       actionType,
       meterType,
       meterNumber,
-      modemType,
+      modemType: getModemType(),
       simCardNumber: normalizedSim,
       note,
       registrationDate: dateStr,
@@ -134,7 +138,8 @@ export default function Registration({ user }: RegistrationProps) {
     // Reset form
     setBsNumber(regionCode);
     setMeterNumber('');
-    setModemType('');
+    setModemMode('встроенный');
+    setModemNumber('');
     setSimCardNumber('');
     setNote('');
     setAddress('');
@@ -161,9 +166,9 @@ export default function Registration({ user }: RegistrationProps) {
   });
 
   return (
-    <div className="p-4" ref={formRef}>
-      <div className="border-2" style={{ 
-        background: '#0000AA', 
+    <div className="p-4 overflow-auto h-full">
+      <div className="border-2" style={{
+        background: '#0000AA',
         borderColor: '#FFFFFF',
         maxWidth: '900px',
         margin: '0 auto'
@@ -268,19 +273,30 @@ export default function Registration({ user }: RegistrationProps) {
               )}
             </div>
 
-            {/* Modem Type */}
+            {/* Modem Type - dropdown + input */}
             <div>
               <label style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#FFFF55' }}>
                 6. Тип модема:
               </label>
-              <input
-                type="text"
-                value={modemType}
-                onChange={e => setModemType(e.target.value)}
+              <select
+                value={modemMode}
+                onChange={e => setModemMode(e.target.value as 'встроенный' | 'custom')}
                 className="w-full px-2 py-1 border-2 mt-1"
-                style={inputStyle(!!errors.modemType)}
-                placeholder="«встроенный» или номер 4-20 цифр"
-              />
+                style={selectStyle(!!errors.modemType)}
+              >
+                <option value="встроенный">встроенный</option>
+                <option value="custom">Указать номер модема</option>
+              </select>
+              {modemMode === 'custom' && (
+                <input
+                  type="text"
+                  value={modemNumber}
+                  onChange={e => setModemNumber(e.target.value.replace(/[^0-9]/g, '').substring(0, 20))}
+                  className="w-full px-2 py-1 border-2 mt-1"
+                  style={inputStyle(!!errors.modemType)}
+                  placeholder="номер модема от 4 до 20 цифр"
+                />
+              )}
               {errors.modemType && (
                 <span style={{ fontFamily: 'VT323, monospace', fontSize: '14px', color: '#FF5555' }}>
                   {errors.modemType}

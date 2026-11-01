@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Page } from './types';
 import Login from './components/Login';
 import Layout from './components/Layout';
+import ViewMeters from './components/ViewMeters';
 import Registration from './components/Registration';
 import Database from './components/Database';
 import Feedback from './components/Feedback';
@@ -12,7 +13,7 @@ const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState<Page>('registration');
+  const [currentPage, setCurrentPage] = useState<Page>('view');
   const sessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearTimer = useCallback(() => {
@@ -26,7 +27,7 @@ export default function App() {
     clearTimer();
     sessionTimerRef.current = setTimeout(() => {
       setUser(null);
-      setCurrentPage('registration');
+      setCurrentPage('view');
     }, SESSION_TIMEOUT);
   }, [clearTimer]);
 
@@ -49,7 +50,6 @@ export default function App() {
     window.addEventListener('click', handleActivity);
     window.addEventListener('scroll', handleActivity);
 
-    // Start timer on login
     startTimer();
 
     return () => {
@@ -63,12 +63,12 @@ export default function App() {
 
   const handleLogin = (loggedUser: User) => {
     setUser(loggedUser);
-    setCurrentPage('registration');
+    setCurrentPage('view'); // Default page after login
   };
 
   const handleLogout = () => {
     setUser(null);
-    setCurrentPage('registration');
+    setCurrentPage('view');
     clearTimer();
   };
 
@@ -77,14 +77,14 @@ export default function App() {
     resetTimer();
   };
 
-  // If not logged in, show login screen
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Render page content
   const renderPage = () => {
     switch (currentPage) {
+      case 'view':
+        return <ViewMeters user={user} />;
       case 'registration':
         return <Registration user={user} />;
       case 'database':
@@ -96,7 +96,7 @@ export default function App() {
       case 'about':
         return <About />;
       default:
-        return <Registration user={user} />;
+        return <ViewMeters user={user} />;
     }
   };
 
