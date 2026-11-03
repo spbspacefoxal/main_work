@@ -1,8 +1,8 @@
 // ============================================================================
-// ПУ-РЕГИСТРАТОР v1.0 — ПОЛНЫЙ УСТАНОВЩИК (ВСЕ ФАЙЛЫ)
+// ПУ-РЕГИСТРАТОР v1.0 — ПОЛНЫЙ УСТАНОВЩИК ВСЕХ ФАЙЛОВ
 // ============================================================================
 // ИНСТРУКЦИЯ:
-// 1. Скопируйте ВЕСЬ текст этого файла
+// 1. Скопируйте ВЕСЬ текст этого файла (Ctrl+A, Ctrl+C)
 // 2. Создайте на компьютере файл setup.js
 // 3. Вставьте текст и сохраните
 // 4. В CMD выполните: node setup.js
@@ -17,38 +17,15 @@ console.log('  PU-Registrator v1.0 - FULL INSTALLER');
 console.log('========================================');
 console.log('');
 
+// Создание папок
 fs.mkdirSync('src', { recursive: true });
 fs.mkdirSync('src/components', { recursive: true });
 
 const files = {};
 
-files['package.json'] = `{
-  "name": "pu-registrator",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.3.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.1.7",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "tailwindcss": "^4.1.7",
-    "typescript": "^5.7.0",
-    "vite": "^6.3.5"
-  }
-}`;
-
+// ============================================================================
+// index.html
+// ============================================================================
 files['index.html'] = `<!doctype html>
 <html lang="ru">
   <head>
@@ -65,6 +42,9 @@ files['index.html'] = `<!doctype html>
   </body>
 </html>`;
 
+// ============================================================================
+// vite.config.js
+// ============================================================================
 files['vite.config.js'] = `import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -78,6 +58,9 @@ export default defineConfig({
   },
 });`;
 
+// ============================================================================
+// tsconfig.json
+// ============================================================================
 files['tsconfig.json'] = `{
   "compilerOptions": {
     "target": "ES2020",
@@ -95,6 +78,9 @@ files['tsconfig.json'] = `{
   "include": ["src"]
 }`;
 
+// ============================================================================
+// database.json
+// ============================================================================
 files['database.json'] = `{
   "records": [],
   "version": "1.0",
@@ -102,6 +88,9 @@ files['database.json'] = `{
   "lastModified": ""
 }`;
 
+// ============================================================================
+// server.js
+// ============================================================================
 files['server.js'] = `const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -184,6 +173,9 @@ app.listen(PORT, () => {
   console.log('');
 });`;
 
+// ============================================================================
+// start.bat
+// ============================================================================
 files['start.bat'] = `@echo off
 chcp 65001 >nul
 echo.
@@ -214,6 +206,9 @@ echo.
 node server.js
 pause`;
 
+// ============================================================================
+// src/main.tsx
+// ============================================================================
 files['src/main.tsx'] = `import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
@@ -221,6 +216,9 @@ import App from "./App.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(<App />);`;
 
+// ============================================================================
+// src/index.css
+// ============================================================================
 files['src/index.css'] = `@tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -258,6 +256,242 @@ input:focus, select:focus, textarea:focus {
 
 button:hover { opacity: 0.9; }
 table { border-spacing: 0; }`;
+
+// ============================================================================
+// src/types.ts
+// ============================================================================
+files['src/types.ts'] = `export type RegionCode = 'AR' | 'MU' | 'PZ' | 'PS' | 'KN' | 'VN' | 'SC' | 'SP' | 'LE' | 'VG';
+export const ALL_REGIONS: RegionCode[] = ['AR', 'MU', 'PZ', 'PS', 'KN', 'VN', 'SC', 'SP', 'LE', 'VG'];
+export type ActionType = 'Регистрация' | 'Редактирование' | 'Удаление';
+export type MeterType = 'Меркурий 234 G7' | 'Ротек РТМ-03' | 'Ротек РТМ-01' | 'Нева 314' | 'Нева 412' | 'Энергомера CE-303';
+export const METER_TYPES: MeterType[] = ['Меркурий 234 G7', 'Ротек РТМ-03', 'Ротек РТМ-01', 'Нева 314', 'Нева 412', 'Энергомера CE-303'];
+export type RegistrationStatus = '' | 'Ok' | 'Error';
+
+export interface MeterRecord {
+  id: string;
+  regionCode: RegionCode;
+  bsNumber: string;
+  actionType: ActionType;
+  meterType: MeterType;
+  meterNumber: string;
+  modemType: string;
+  simCardNumber: string;
+  note: string;
+  registrationDate: string;
+  address: string;
+  comment: string;
+  registeredBy: string;
+  registrationStatus: RegistrationStatus;
+  statusDate: string;
+  statusAdmin: string;
+}
+
+export interface User {
+  login: string;
+  password: string;
+  regions: RegionCode[];
+  role: 'user' | 'admin' | 'root';
+  canEdit: boolean;
+  canDelete: boolean;
+  canSetStatus: boolean;
+  canExport: boolean;
+}
+
+export const USERS: User[] = [
+  { login: 'AR-user', password: 'qwerty', regions: ['AR'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'MU-user', password: 'qwerty', regions: ['MU'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'PZ-user', password: 'qwerty', regions: ['PZ'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'PS-user', password: 'qwerty', regions: ['PS'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'KN-user', password: 'qwerty', regions: ['KN'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'VG-user', password: 'qwerty', regions: ['VG'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'VN-user', password: 'qwerty', regions: ['VN'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-East', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-Nord', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-West', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-South', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-admin', password: '12345', regions: ALL_REGIONS, role: 'admin', canEdit: true, canDelete: true, canSetStatus: true, canExport: true },
+  { login: 'SP-root', password: 'a413401L', regions: ALL_REGIONS, role: 'root', canEdit: true, canDelete: true, canSetStatus: true, canExport: true },
+];
+
+export type Page = 'view' | 'registration' | 'database' | 'feedback' | 'help' | 'about';`;
+
+// ============================================================================
+// src/db.ts
+// ============================================================================
+files['src/db.ts'] = `import { MeterRecord } from './types';
+
+const API_BASE = '/api';
+let recordsCache: MeterRecord[] | null = null;
+
+export async function getRecords(): Promise<MeterRecord[]> {
+  try {
+    const response = await fetch(API_BASE + '/records');
+    const data = await response.json();
+    recordsCache = data;
+    return data;
+  } catch (e) {
+    return recordsCache || [];
+  }
+}
+
+export async function addRecord(record: MeterRecord): Promise<void> {
+  await fetch(API_BASE + '/records', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+  });
+  recordsCache = null;
+}
+
+export async function updateRecord(id: string, updates: Partial<MeterRecord>): Promise<void> {
+  await fetch(API_BASE + '/records/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+  recordsCache = null;
+}
+
+export async function deleteRecord(id: string): Promise<void> {
+  await fetch(API_BASE + '/records/' + id, { method: 'DELETE' });
+  recordsCache = null;
+}
+
+export function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+export async function checkDuplicates(
+  meterNumber?: string,
+  modemType?: string,
+  simCardNumber?: string,
+  excludeId?: string
+): Promise<{ meterNumberExists: boolean; modemExists: boolean; simCardExists: boolean }> {
+  try {
+    const params = new URLSearchParams();
+    if (meterNumber) params.set('meterNumber', meterNumber);
+    if (modemType) params.set('modemType', modemType);
+    if (simCardNumber) params.set('simCardNumber', simCardNumber);
+    if (excludeId) params.set('excludeId', excludeId);
+    const response = await fetch(API_BASE + '/check?' + params.toString());
+    return await response.json();
+  } catch (e) {
+    return { meterNumberExists: false, modemExists: false, simCardExists: false };
+  }
+}`;
+
+// ============================================================================
+// src/export.ts
+// ============================================================================
+files['src/export.ts'] = `import * as XLSX from 'xlsx';
+import { getRecords } from './db';
+
+export async function exportToXlsx(): Promise<void> {
+  const records = await getRecords();
+  const data = records.map((r, idx) => ({
+    '№': idx + 1,
+    'Код региона': r.regionCode,
+    'Номер БС': r.bsNumber,
+    'Тип действия': r.actionType,
+    'Тип прибора учёта': r.meterType,
+    'Номер счётчика': r.meterNumber,
+    'Тип модема': r.modemType,
+    'Номер SIM-карты': r.simCardNumber,
+    'Отметка': r.note,
+    'Зарегистрировал': r.registeredBy,
+    'Дата регистрации': r.registrationDate,
+    'Адрес объекта': r.address,
+    'Примечание': r.comment,
+    'Статус': r.registrationStatus || '—',
+    'Дата одобрения': r.statusDate || '',
+    'Одобрил': r.statusAdmin || '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [
+    { wch: 5 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 20 },
+    { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 15 }, { wch: 15 },
+    { wch: 20 }, { wch: 40 }, { wch: 30 }, { wch: 10 }, { wch: 20 }, { wch: 15 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Приборы учёта');
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ru-RU').replace(/\\./g, '');
+  XLSX.writeFile(wb, 'Регистратор' + dateStr + '.xlsx');
+}`;
+
+// ============================================================================
+// src/App.tsx
+// ============================================================================
+files['src/App.tsx'] = `import { useState, useEffect, useCallback, useRef } from 'react';
+import { User, Page } from './types';
+import Login from './components/Login';
+import Layout from './components/Layout';
+import ViewMeters from './components/ViewMeters';
+import Registration from './components/Registration';
+import Database from './components/Database';
+import Feedback from './components/Feedback';
+import Help from './components/Help';
+import About from './components/About';
+
+const SESSION_TIMEOUT = 10 * 60 * 1000;
+
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState<Page>('view');
+  const sessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimer = useCallback(() => {
+    if (sessionTimerRef.current) { clearTimeout(sessionTimerRef.current); sessionTimerRef.current = null; }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    clearTimer();
+    sessionTimerRef.current = setTimeout(() => { setUser(null); setCurrentPage('view'); }, SESSION_TIMEOUT);
+  }, [clearTimer]);
+
+  const resetTimer = useCallback(() => { startTimer(); }, [startTimer]);
+
+  useEffect(() => {
+    if (!user) { clearTimer(); return; }
+    const handleActivity = () => { resetTimer(); };
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    startTimer();
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      clearTimer();
+    };
+  }, [user, startTimer, resetTimer, clearTimer]);
+
+  const handleLogin = (loggedUser: User) => { setUser(loggedUser); setCurrentPage('view'); };
+  const handleLogout = () => { setUser(null); setCurrentPage('view'); clearTimer(); };
+  const handleNavigate = (page: Page) => { setCurrentPage(page); resetTimer(); };
+
+  if (!user) { return <Login onLogin={handleLogin} />; }
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'view': return <ViewMeters user={user} />;
+      case 'registration': return <Registration user={user} />;
+      case 'database': return <Database user={user} />;
+      case 'feedback': return <Feedback />;
+      case 'help': return <Help />;
+      case 'about': return <About />;
+      default: return <ViewMeters user={user} />;
+    }
+  };
+
+  return (
+    <Layout user={user} currentPage={currentPage} onNavigate={handleNavigate} onLogout={handleLogout}>
+      {renderPage()}
+    </Layout>
+  );
+}`;
 
 // Запись всех файлов
 let count = 0;
