@@ -1,0 +1,118 @@
+================================================================================
+ПУ-РЕГИСТРАТОР v1.0 - ПОЛНЫЙ КОД ПРОЕКТА (ЧАСТЬ 2: ИСХОДНЫЙ КОД)
+================================================================================
+
+================================================================================
+ФАЙЛ: src/main.tsx
+================================================================================
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import App from "./App.tsx";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+
+================================================================================
+ФАЙЛ: src/index.css
+================================================================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'VT323', monospace;
+  background: #00AAAA;
+  color: #FFFFFF;
+}
+
+::-webkit-scrollbar { width: 16px; height: 16px; }
+::-webkit-scrollbar-track { background: #0000AA; border: 1px solid #555555; }
+::-webkit-scrollbar-thumb { background: #AAAAAA; border: 2px solid #555555; }
+::-webkit-scrollbar-thumb:hover { background: #FFFF55; }
+
+::selection { background: #FFFF55; color: #000000; }
+
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid #FFFF55;
+  outline-offset: -2px;
+}
+
+button:hover { opacity: 0.9; }
+table { border-spacing: 0; }
+
+================================================================================
+ФАЙЛ: src/types.ts
+================================================================================
+export type RegionCode = 'AR' | 'MU' | 'PZ' | 'PS' | 'KN' | 'VN' | 'SC' | 'SP' | 'LE' | 'VG';
+export const ALL_REGIONS: RegionCode[] = ['AR', 'MU', 'PZ', 'PS', 'KN', 'VN', 'SC', 'SP', 'LE', 'VG'];
+export type ActionType = 'Регистрация' | 'Редактирование' | 'Удаление';
+export type MeterType = 'Меркурий 234 G7' | 'Ротек РТМ-03' | 'Ротек РТМ-01' | 'Нева 314' | 'Нева 412' | 'Энергомера CE-303';
+export const METER_TYPES: MeterType[] = ['Меркурий 234 G7', 'Ротек РТМ-03', 'Ротек РТМ-01', 'Нева 314', 'Нева 412', 'Энергомера CE-303'];
+export type RegistrationStatus = '' | 'Ok' | 'Error';
+
+export interface MeterRecord {
+  id: string;
+  regionCode: RegionCode;
+  bsNumber: string;
+  actionType: ActionType;
+  meterType: MeterType;
+  meterNumber: string;
+  modemType: string;
+  simCardNumber: string;
+  note: string;
+  registrationDate: string;
+  address: string;
+  comment: string;
+  registeredBy: string;
+  registrationStatus: RegistrationStatus;
+  statusDate: string;
+  statusAdmin: string;
+}
+
+export interface User {
+  login: string;
+  password: string;
+  regions: RegionCode[];
+  role: 'user' | 'admin' | 'root';
+  canEdit: boolean;
+  canDelete: boolean;
+  canSetStatus: boolean;
+  canExport: boolean;
+}
+
+export const USERS: User[] = [
+  { login: 'AR-user', password: 'qwerty', regions: ['AR'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'MU-user', password: 'qwerty', regions: ['MU'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'PZ-user', password: 'qwerty', regions: ['PZ'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'PS-user', password: 'qwerty', regions: ['PS'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'KN-user', password: 'qwerty', regions: ['KN'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'VG-user', password: 'qwerty', regions: ['VG'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'VN-user', password: 'qwerty', regions: ['VN'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-East', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-Nord', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-West', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-South', password: 'qwerty', regions: ['SP', 'LE', 'SC'], role: 'user', canEdit: false, canDelete: false, canSetStatus: false, canExport: false },
+  { login: 'SP-admin', password: '12345', regions: ALL_REGIONS, role: 'admin', canEdit: true, canDelete: true, canSetStatus: true, canExport: true },
+  { login: 'SP-root', password: 'a413401L', regions: ALL_REGIONS, role: 'root', canEdit: true, canDelete: true, canSetStatus: true, canExport: true },
+];
+
+export type Page = 'view' | 'registration' | 'database' | 'feedback' | 'help' | 'about';
+
+================================================================================
+КОНЕЦ ФАЙЛА FULL_PROJECT_PART2.txt
+================================================================================
+
+Продолжение следует в файле FULL_PROJECT_PART3.txt...
