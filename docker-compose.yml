@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Nginx — веб-сервер
+  # ============================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: registrator-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/sites:/etc/nginx/conf.d:ro
+      - ./frontend/dist:/var/www/html/frontend:ro
+      - ./backend/public:/var/www/html/backend:ro
+    depends_on:
+      - php-fpm
+    networks:
+      - registrator-net
+    restart: unless-stopped
+
+  # ============================================
+  # PHP-FPM — бэкенд
+  # ============================================
+  php-fpm:
+    build:
+      context: ./docker/php-fpm
+      dockerfile: Dockerfile
+    container_name: registrator-php
+    volumes:
+      - ./backend:/var/www/html/backend:ro
+      - ./docker/php-fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=registrator
+      - DB_USER=registrator
+      - DB_PASSWORD=registrator_secret_2026
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - APP_ENV=production
+      - APP_SECRET=change_this_to_random_string_in_production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - registrator-net
+    restart: unless-stopped
+
+  # ============================================
+  # PostgreSQL — база данных
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: registrator-postgres
+    environment:
+      POSTGRES_DB: registrator
+      POSTGRES_USER: registrator
+      POSTGRES_PASSWORD: registrator_secret_2026
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U registrator"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - registrator-net
+    restart: unless-stopped
+
+  # ============================================
+  # Redis — кэш и сессии
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: registrator-redis
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - registrator-net
+    restart: unless-stopped
+
+  # ============================================
+  # Redis Commander — UI для Redis (опционально)
+  # ============================================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: registrator-redis-ui
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - registrator-net
+    profiles:
+      - tools
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  registrator-net:
+    driver: bridge

@@ -1,0 +1,293 @@
+// ============================================================================
+// ПУ-РЕГИСТРАТОР v1.0 — УСТАНОВЩИК UI КОМПОНЕНТОВ
+// ============================================================================
+// ЗАПУСТИТЕ ПОСЛЕ setup-components.js!
+// ============================================================================
+
+const fs = require('fs');
+const path = require('path');
+
+console.log('');
+console.log('========================================');
+console.log('  Установка UI компонентов...');
+console.log('========================================');
+console.log('');
+
+fs.mkdirSync('src/components', { recursive: true });
+
+const files = {};
+
+// ============================================================================
+// src/components/Login.tsx
+// ============================================================================
+files['src/components/Login.tsx'] = `import React, { useState, useEffect, useRef } from 'react';
+import { User, USERS } from '../types';
+
+interface LoginProps { onLogin: (user: User) => void; }
+
+export default function Login({ onLogin }: LoginProps) {
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const loginRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => setCursorVisible(v => !v), 530);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => { loginRef.current?.focus(); }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const user = USERS.find(u => u.login === login && u.password === password);
+    if (user) { setError(''); onLogin(user); }
+    else { setError('▌ ОШИБКА: Неверный логин или пароль!'); }
+  };
+
+  const inputStyle = { background: '#000000', color: '#FFFFFF', borderColor: '#AAAAAA', fontFamily: 'VT323, monospace', fontSize: '20px' };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen" style={{ background: '#0000AA' }}>
+      <div className="border-2 border-white p-0" style={{ background: '#0000AA', minWidth: '500px', boxShadow: '4px 4px 0px #000' }}>
+        <div className="text-center py-1" style={{ background: '#AAAAAA' }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#000' }}>
+            ╔{'═'.repeat(38)}╗
+          </span>
+        </div>
+        <div className="text-center" style={{ background: '#AAAAAA' }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#000' }}>
+            ║&nbsp;&nbsp;&nbsp;ПУ-РЕГИСТРАТОР v1.0 — АВТОРИЗАЦИЯ&nbsp;&nbsp;&nbsp;║
+          </span>
+        </div>
+        <div className="text-center" style={{ background: '#AAAAAA' }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#000' }}>
+            ╚{'═'.repeat(38)}╝
+          </span>
+        </div>
+        <form onSubmit={handleSubmit} className="px-6 py-4">
+          <div className="mb-4">
+            <label style={{ color: '#FFFF55', fontFamily: 'VT323, monospace', fontSize: '20px' }}>
+              Логин:{cursorVisible && login === '' ? '█' : ''}
+            </label>
+            <input ref={loginRef} type="text" value={login} onChange={e => setLogin(e.target.value)}
+              className="w-full px-2 py-1 border-2 outline-none mt-1" style={inputStyle} autoFocus />
+          </div>
+          <div className="mb-4">
+            <label style={{ color: '#FFFF55', fontFamily: 'VT323, monospace', fontSize: '20px' }}>Пароль:</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              className="w-full px-2 py-1 border-2 outline-none mt-1" style={inputStyle} />
+          </div>
+          {error && <div className="mb-4 p-2 border" style={{ background: '#AA0000', color: '#FFF', borderColor: '#FF5555', fontFamily: 'VT323, monospace', fontSize: '18px' }}>{error}</div>}
+          <div className="flex justify-center mt-6">
+            <button type="submit" className="px-6 py-1 border-2 cursor-pointer"
+              style={{ background: '#AAAAAA', color: '#000', borderColor: '#FFF', fontFamily: 'VT323, monospace', fontSize: '20px' }}>
+              [ ВОЙТИ ]
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}`;
+
+// ============================================================================
+// src/components/Layout.tsx
+// ============================================================================
+files['src/components/Layout.tsx'] = `import { User, Page } from '../types';
+import { exportToXlsx } from '../export';
+
+interface LayoutProps {
+  user: User; currentPage: Page;
+  onNavigate: (page: Page) => void; onLogout: () => void;
+  children: React.ReactNode;
+}
+
+export default function Layout({ user, currentPage, onNavigate, onLogout, children }: LayoutProps) {
+  const menuItems: { key: Page; label: string }[] = [
+    { key: 'view', label: 'Просмотр ПУ' },
+    { key: 'registration', label: 'Регистрация' },
+    { key: 'database', label: 'ХБ по ПУ' },
+    { key: 'feedback', label: 'Обратная связь' },
+    { key: 'help', label: 'Справка' },
+    { key: 'about', label: 'О программе' },
+  ];
+
+  const handleExport = async () => { await exportToXlsx(); };
+
+  return (
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#00AAAA' }}>
+      <div className="flex items-center px-1 py-0 flex-shrink-0" style={{ background: '#AAAAAA' }}>
+        {menuItems.map((item) => (
+          <button key={item.key} onClick={() => onNavigate(item.key)}
+            className="px-3 py-0 cursor-pointer border-none outline-none"
+            style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#000',
+              background: currentPage === item.key ? '#FFFF55' : 'transparent',
+              fontWeight: currentPage === item.key ? 'bold' : 'normal' }}>
+            {item.label}
+          </button>
+        ))}
+        {user.canExport && (
+          <button onClick={handleExport} className="px-3 py-0 cursor-pointer border-none outline-none"
+            style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#000', background: 'transparent' }}>
+            Выгрузка
+          </button>
+        )}
+        <div className="flex-1" />
+        <button onClick={onLogout} className="px-3 py-0 cursor-pointer border-none outline-none"
+          style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#000', background: 'transparent' }}>
+          Выход
+        </button>
+      </div>
+      <div className="flex items-center px-2 py-0 flex-shrink-0" style={{ background: '#0000AA' }}>
+        <span style={{ fontFamily: 'VT323, monospace', fontSize: '16px', color: '#FFF' }}>
+          Пользователь: <span style={{ color: '#FFFF55' }}>{user.login}</span>
+          {' │ '}Роль: <span style={{ color: '#55FFFF' }}>{user.role === 'root' ? 'ROOT' : user.role === 'admin' ? 'АДМИН' : 'ПОЛЬЗОВАТЕЛЬ'}</span>
+          {' │ '}Регионы: <span style={{ color: '#55FF55' }}>{user.regions.join(', ')}</span>
+        </span>
+      </div>
+      <div className="flex-1 overflow-hidden">{children}</div>
+      <div className="flex items-center px-2 py-0 flex-shrink-0" style={{ background: '#AAAAAA' }}>
+        <span style={{ fontFamily: 'VT323, monospace', fontSize: '16px', color: '#000' }}>
+          F1-Справка │ F2-Регистрация │ F3-Просмотр ПУ │ F10-Выход
+        </span>
+        <div className="flex-1" />
+        <span style={{ fontFamily: 'VT323, monospace', fontSize: '16px', color: '#000' }}>ПУ-Регистратор v1.0</span>
+      </div>
+    </div>
+  );
+}`;
+
+// ============================================================================
+// src/components/Feedback.tsx
+// ============================================================================
+files['src/components/Feedback.tsx'] = `import React, { useState } from 'react';
+
+export default function Feedback() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSent(true);
+    setName(''); setEmail(''); setMessage('');
+    setTimeout(() => setSent(false), 5000);
+  };
+
+  const inputStyle = { background: '#000', color: '#FFF', borderColor: '#AAA', fontFamily: 'VT323, monospace', fontSize: '18px' };
+
+  return (
+    <div className="p-4">
+      <div className="border-2" style={{ background: '#0000AA', borderColor: '#FFF', maxWidth: '700px', margin: '0 auto' }}>
+        <div className="text-center py-1" style={{ background: '#AAA' }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '20px', color: '#000' }}>═══ ОБРАТНАЯ СВЯЗЬ ═══</span>
+        </div>
+        <form onSubmit={handleSubmit} className="p-4">
+          <div className="mb-4">
+            <label style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#FFFF55' }}>Ваше имя:</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-2 py-1 border-2 mt-1" style={inputStyle} required />
+          </div>
+          <div className="mb-4">
+            <label style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#FFFF55' }}>Email:</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-2 py-1 border-2 mt-1" style={inputStyle} required />
+          </div>
+          <div className="mb-4">
+            <label style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#FFFF55' }}>Сообщение:</label>
+            <textarea value={message} onChange={e => setMessage(e.target.value)} className="w-full px-2 py-1 border-2 mt-1" style={inputStyle} rows={5} required />
+          </div>
+          {sent && <div className="mb-4 p-2 border" style={{ background: '#005500', color: '#55FF55', borderColor: '#55FF55', fontFamily: 'VT323, monospace', fontSize: '18px' }}>✓ Отправлено!</div>}
+          <div className="flex justify-center">
+            <button type="submit" className="px-6 py-2 border-2 cursor-pointer" style={{ background: '#AAA', color: '#000', borderColor: '#FFF', fontFamily: 'VT323, monospace', fontSize: '20px' }}>[ ОТПРАВИТЬ ]</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}`;
+
+// ============================================================================
+// src/components/Help.tsx
+// ============================================================================
+files['src/components/Help.tsx'] = `export default function Help() {
+  return (
+    <div className="p-4">
+      <div className="border-2" style={{ background: '#0000AA', borderColor: '#FFF', maxWidth: '800px', margin: '0 auto' }}>
+        <div className="text-center py-1" style={{ background: '#AAA' }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '20px', color: '#000' }}>═══ СПРАВКА ═══</span>
+        </div>
+        <div className="p-4" style={{ fontFamily: 'VT323, monospace', fontSize: '18px', color: '#FFF' }}>
+          <h2 style={{ color: '#FFFF55', fontSize: '22px' }} className="mb-3">▌ Описание системы</h2>
+          <p className="mb-4">ПУ-Регистратор — система учёта приборов учёта электроэнергии.</p>
+          <h2 style={{ color: '#FFFF55', fontSize: '22px' }} className="mb-3">▌ Регистрация прибора</h2>
+          <ol className="list-decimal pl-6 mb-4" style={{ color: '#55FFFF' }}>
+            <li>Выберите код региона</li>
+            <li>Введите номер БС (код + 6 цифр)</li>
+            <li>Выберите тип действия</li>
+            <li>Выберите тип прибора учёта</li>
+            <li>Введите номер счётчика (до 16 цифр)</li>
+            <li>Укажите тип модема</li>
+            <li>Введите номер SIM (7XXXXXXXXXX)</li>
+            <li>Укажите адрес</li>
+            <li>Нажмите «Отправить»</li>
+          </ol>
+          <h2 style={{ color: '#FFFF55', fontSize: '22px' }} className="mb-3">▌ Статусы</h2>
+          <p className="mb-4">
+            <span style={{ color: '#55FF55' }}>■ Ok</span> — светло-зелёный фон<br/>
+            <span style={{ color: '#FFFF55' }}>■ Error</span> — светло-жёлтый фон
+          </p>
+          <h2 style={{ color: '#FFFF55', fontSize: '22px' }} className="mb-3">▌ Таймаут</h2>
+          <p style={{ color: '#55FFFF' }}>При неактивности 10 минут сессия завершается.</p>
+        </div>
+      </div>
+    </div>
+  );
+}`;
+
+// ============================================================================
+// src/components/About.tsx
+// ============================================================================
+files['src/components/About.tsx'] = `export default function About() {
+  return (
+    <div className="p-4">
+      <div className="border-2" style={{ background: '#0000AA', borderColor: '#FFF', maxWidth: '700px', margin: '0 auto' }}>
+        <div className="text-center py-1" style={{ background: '#AAA' }}>
+          <span style={{ fontFamily: 'VT323, monospace', fontSize: '20px', color: '#000' }}>═══ О ПРОГРАММЕ ═══</span>
+        </div>
+        <div className="p-6 text-center" style={{ fontFamily: 'VT323, monospace' }}>
+          <div className="mt-4" style={{ color: '#FFF', fontSize: '22px' }}>ПУ-РЕГИСТРАТОР</div>
+          <div style={{ color: '#FFFF55', fontSize: '18px' }}>Версия 1.0</div>
+          <div className="mt-6 border-t-2 pt-4" style={{ borderColor: '#555', color: '#55FFFF', fontSize: '16px' }}>
+            <p>Система учёта приборов учёта электроэнергии</p>
+          </div>
+          <div className="mt-6" style={{ color: '#AAA', fontSize: '14px' }}>
+            <p>© 2024-2026 Все права защищены</p>
+            <p>Дизайн: Norton Commander Style</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}`;
+
+// Запись всех файлов
+let count = 0;
+const total = Object.keys(files).length;
+
+for (const [filePath, content] of Object.entries(files)) {
+  const dir = path.dirname(filePath);
+  if (dir !== '.') fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf-8');
+  count++;
+  console.log('[' + count + '/' + total + '] ' + filePath);
+}
+
+console.log('');
+console.log('========================================');
+console.log('  UI компоненты установлены! (' + count + ' файлов)');
+console.log('========================================');
+console.log('');
+console.log('Теперь скопируйте и запустите setup-main.js');
+console.log('');
