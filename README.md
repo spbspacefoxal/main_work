@@ -1,149 +1,224 @@
-# ПУ-Регистратор v1.0
+# 🚀 ПУ-РЕГИСТРАТОР 2.0
 
-Система учёта приборов учёта электроэнергии в стиле Norton Commander / Midnight Commander.
+**Промышленный стек:** Nginx + PHP-FPM 8.2 + PostgreSQL 16 + Redis 7
 
-## 📦 Структура проекта
+---
+
+## 📊 Архитектура
 
 ```
-ПУ-Регистратор/
-├── database.json          # Файл базы данных (отдельный файл!)
-├── server.js              # Node.js сервер (Express)
-├── start.bat              # Скрипт запуска для Windows
-├── start.sh               # Скрипт запуска для Linux/Mac
-├── dist/                  # Собранные файлы веб-приложения
-│   ├── index.html
-│   └── assets/
-├── src/                   # Исходный код React-приложения
-├── package.json
-└── README.md
+┌──────────┐     ┌────────┐     ┌──────────┐     ┌──────────┐
+│  Браузер  │ ──→ │ Nginx  │ ──→ │ PHP-FPM  │ ──→ │PostgreSQL│
+│  (React)  │ ←── │  :80   │ ←── │  :9000   │ ←── │  :5432   │
+└──────────┘     └────────┘     └────┬─────┘     └──────────┘
+                                     │
+                                ┌────┴─────┐
+                                │  Redis   │
+                                │  :6379   │
+                                └──────────┘
 ```
 
-## 🚀 Быстрый запуск
+---
 
-### Windows
-Просто запустите файл:
-```
-start.bat
-```
+## 🚀 Быстрый старт
 
-### Linux / macOS
+### Требования
+- Docker Desktop (Windows/Mac) или Docker Engine (Linux)
+- Docker Compose v2+
+
+### Установка
+
 ```bash
-chmod +x start.sh
-./start.sh
+# Windows — двойной клик
+install.bat
+
+# Linux/Mac
+chmod +x install.sh
+./install.sh
 ```
 
-### Ручной запуск
+### Управление
+
 ```bash
-# 1. Установить зависимости (если ещё не установлены)
-npm install
+# Запуск
+start.bat          # Windows
+./start.sh         # Linux/Mac
 
-# 2. Собрать проект
-npm run build
+# Остановка
+stop.bat
+./stop.sh
 
-# 3. Запустить сервер
-node server.js
+# Перезапуск
+restart.bat
+./restart.sh
+
+# Логи
+docker compose logs -f
+
+# Статус
+docker compose ps
 ```
 
-После запуска откройте браузер: **http://localhost:3000**
+---
 
-## 📁 Файл базы данных
+## 📁 Структура проекта
 
-**database.json** — это отдельный файл базы данных, который хранится в корне проекта.
-
-### Структура database.json:
-```json
-{
-  "records": [],
-  "version": "1.0",
-  "created": "2026-01-01T00:00:00.000Z",
-  "lastModified": "2026-01-01T12:00:00.000Z"
-}
+```
+registrator-2.0/
+├── docker-compose.yml          # Оркестрация контейнеров
+├── install.bat / install.sh    # Установка
+├── start.bat / start.sh        # Запуск
+├── stop.bat / stop.sh          # Остановка
+├── restart.bat / restart.sh    # Перезапуск
+│
+├── database/
+│   └── init.sql                # Схема PostgreSQL
+│
+├── docker/
+│   ├── nginx/
+│   │   ├── nginx.conf          # Конфиг Nginx
+│   │   └── sites/
+│   │       └── default.conf    # Виртуальный хост
+│   └── php-fpm/
+│       ├── Dockerfile          # Образ PHP
+│       └── www.conf            # Конфиг PHP-FPM
+│
+├── backend/                    # PHP API
+│   ├── composer.json
+│   ├── public/
+│   │   └── index.php           # Точка входа
+│   ├── src/
+│   │   ├── Auth.php            # Авторизация (JWT + Redis)
+│   │   ├── Database.php        # PostgreSQL
+│   │   ├── RedisCache.php      # Redis кэш
+│   │   ├── Router.php          # Маршрутизация
+│   │   ├── Controllers/
+│   │   │   ├── AuthController.php
+│   │   │   └── RecordsController.php
+│   │   └── Middleware/
+│   │       └── AuthMiddleware.php
+│   └── config/
+│       ├── app.php
+│       ├── database.php
+│       └── redis.php
+│
+└── frontend/                   # React SPA
+    ├── src/
+    └── dist/                   # Собранный фронтенд
 ```
 
-### Работа с базой данных:
-- **Резервное копирование**: просто скопируйте файл `database.json`
-- **Восстановление**: замените файл `database.json` на резервную копию
-- **Очистка**: удалите все записи из массива `"records": []`
-- **Перенос**: скопируйте `database.json` на другой компьютер
+---
 
 ## 🔐 Учётные записи
 
-### Пользователи (пароль: qwerty)
-| Логин | Регионы |
-|-------|---------|
-| AR-user | AR |
-| MU-user | MU |
-| PZ-user | PZ |
-| PS-user | PS |
-| KN-user | KN |
-| VG-user | VG |
-| VN-user | VN |
-| SP-East | SP, LE, SC |
-| SP-Nord | SP, LE, SC |
-| SP-West | SP, LE, SC |
-| SP-South | SP, LE, SC |
+| Роль | Логин | Пароль | Права |
+|------|-------|--------|-------|
+| 👤 Пользователь | AR-user | qwerty | Просмотр и регистрация (AR) |
+| 👤 Пользователь | SP-East | qwerty | Просмотр и регистрация (SP, LE, SC) |
+| 🔑 Администратор | SP-admin | 12345 | Полный доступ + выгрузка |
+| 👑 Root | SP-root | a413401L | Полные права |
 
-### Администраторы
-| Логин | Пароль | Права |
-|-------|--------|-------|
-| SP-admin | 12345 | Полный доступ ко всем регионам, управление статусами, выгрузка |
-| SP-root | a413401L | Полные права на базу данных и сайт |
+---
 
-## 📋 Функциональность
+## 📡 API Endpoints
 
-### Основные возможности
-- ✅ Авторизация с таймаутом 10 минут
-- ✅ По умолчанию открывается страница «Просмотр ПУ»
-- ✅ Регистрация приборов учёта с валидацией
-- ✅ Тип модема: выпадающий список «встроенный» или ввод номера
-- ✅ Проверка дубликатов (номер счётчика, модем, SIM)
-- ✅ Просмотр базы данных с фильтрацией по регионам
+### Авторизация
+| Метод | URL | Описание |
+|-------|-----|----------|
+| POST | /api/auth/login | Вход |
+| POST | /api/auth/logout | Выход |
+| GET | /api/auth/check | Проверка токена |
 
-### Просмотр ПУ
-- ✅ Таблица с фильтрами как в Excel (по каждому столбцу)
-- ✅ Скролл таблицы
-- ✅ Приборы без отметки «Ok» отображаются в начале списка
-- ✅ Для администратора — просмотр начинается с новых записей
-- ✅ Цветовая разметка статусов (зелёный/жёлтый)
+### Приборы учёта
+| Метод | URL | Описание |
+|-------|-----|----------|
+| GET | /api/records | Список записей |
+| POST | /api/records | Создать запись |
+| PUT | /api/records/:id | Обновить запись |
+| DELETE | /api/records/:id | Удалить запись |
+| GET | /api/check | Проверка дубликатов |
+| GET | /api/export | Экспорт данных |
 
-### Выгрузка (только для администраторов)
-- ✅ Экспорт всей базы данных в формат XLSX
-- ✅ Имя файла: «Регистратор» + дата в коротком формате
+---
 
-## 🛠 Технологии
+## 🗄️ База данных
 
-- **Frontend**: React 18, Vite, Tailwind CSS
-- **Backend**: Node.js, Express
-- **База данных**: JSON файл (database.json)
-- **Экспорт**: SheetJS (xlsx) — экспорт в Excel
-- **Шрифт**: VT323 (ретро 8-bit)
+### Таблицы
 
-## 📌 API сервера
+**users** — пользователи системы
+- id, login, password_hash, role, regions, permissions
 
-Сервер предоставляет REST API:
+**meter_records** — приборы учёта
+- id, region_code, bs_number, action_type, meter_type
+- meter_number, modem_type, sim_card_number
+- note, registration_date, address, comment
+- registered_by, registration_status, status_date, status_admin
 
-- `GET /api/records` — получить все записи
-- `POST /api/records` — добавить новую запись
-- `PUT /api/records/:id` — обновить запись
-- `DELETE /api/records/:id` — удалить запись
-- `GET /api/check` — проверить дубликаты
-- `GET /api/export` — экспорт всех записей
+**audit_log** — лог действий
+- id, user_login, action, table_name, record_id
+- old_data (JSONB), new_data (JSONB), ip_address, created_at
 
-## 🎨 Дизайн
+### Индексы
+- UNIQUE: meter_number, sim_card_number
+- INDEX: region_code, registration_status, created_at, modem_type
 
-Дизайн выполнен в стиле Norton Commander / Midnight Commander:
-- Светло-голубой фон
-- Мигающий курсор
-- Жёлтая подсветка активного меню
-- Шрифт VT323 (8-bit)
-- Эффект scanlines
-- Ретро-кнопки и элементы интерфейса
+---
 
-## 🔧 Требования
+## ⚡ Производительность
 
-- Node.js 14 или выше
-- npm 6 или выше
-- Современный веб-браузер (Chrome, Firefox, Edge, Safari)
+### Кэширование (Redis)
+- Сессии пользователей (TTL: 10 минут)
+- Кэш запросов (TTL: 30 секунд)
+- Автоматическая инвалидация при изменениях
+
+### Оптимизации
+- OPcache для PHP
+- Gzip сжатие в Nginx
+- Keep-alive соединения
+- Пул PHP-FPM воркеров (до 50)
+- Индексы PostgreSQL
+
+### Ожидаемая производительность
+| Метрика | Значение |
+|---------|----------|
+| RPS | 3000-5000 |
+| Время ответа | 5-20 мс |
+| Макс. записей | 10 000 000+ |
+| RAM (минимум) | 2 ГБ |
+
+---
+
+## 🔧 Утилиты
+
+### Redis Commander (UI для Redis)
+```bash
+docker compose --profile tools up -d
+# Откройте: http://localhost:8081
+```
+
+### Подключение к БД
+```bash
+docker compose exec postgres psql -U registrator
+```
+
+### Очистка кэша
+```bash
+docker compose exec redis redis-cli FLUSHDB
+```
+
+---
+
+## 🛡️ Безопасность
+
+- JWT токены с коротким TTL
+- Сессии в Redis с автопродлением
+- Password hashing (bcrypt)
+- CORS заголовки
+- SQL injection protection (PDO prepared statements)
+- XSS protection (React)
+- HTTP security headers
+
+---
 
 ## 📝 Лицензия
 

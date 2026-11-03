@@ -1,35 +1,41 @@
 @echo off
 chcp 65001 >nul
-title PU-Registrator v1.0 - Restart
+title PU-Registrator 2.0 - Restart
 color 0E
 
 echo.
-echo  ╔══════════════════════════════════════════════╗
-echo  ║                                              ║
-echo  ║       ПУ-РЕГИСТРАТОР v1.0 — ПЕРЕЗАПУСК       ║
-echo  ║                                              ║
-echo  ╚══════════════════════════════════════════════╝
+echo  ╔══════════════════════════════════════════════════════════╗
+echo  ║                                                          ║
+echo  ║       ПУ-РЕГИСТРАТОР 2.0 — ПЕРЕЗАПУСК                   ║
+echo  ║                                                          ║
+echo  ╚══════════════════════════════════════════════════════════╝
 echo.
 
-REM Остановка сервера
-echo  [1/2] Остановка сервера...
-taskkill /F /IM node.exe >NUL 2>&1
-timeout /t 2 /nobreak >NUL
-echo  [OK] Сервер остановлен.
-echo.
+cd /d "%~dp0"
 
-REM Запуск сервера
-echo  [2/2] Запуск сервера...
-echo.
-echo  ══════════════════════════════════════════════
-echo.
-echo  [INFO] Сервер перезапущен!
-echo  [INFO] Откройте браузер: http://localhost:3000
-echo.
-echo  ══════════════════════════════════════════════
-echo.
+echo  [1/3] Остановка контейнеров...
+docker compose down
+timeout /t 2 /nobreak >nul
 
-start "" "%~dp0start.bat"
+echo  [2/3] Очистка кэша Redis...
+docker compose exec redis redis-cli FLUSHDB 2>nul
 
-timeout /t 3 /nobreak >NUL
-exit
+echo  [3/3] Запуск контейнеров...
+docker compose up -d
+
+if %ERRORLEVEL% EQU 0 (
+    echo.
+    echo  ══════════════════════════════════════════════════════════
+    echo.
+    echo  [OK] Сервер перезапущен!
+    echo.
+    echo  Откройте браузер: http://localhost:8080
+    echo.
+    echo  ══════════════════════════════════════════════════════════
+) else (
+    echo.
+    echo  [ОШИБКА] Не удалось перезапустить сервер
+)
+
+echo.
+pause

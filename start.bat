@@ -1,66 +1,46 @@
 @echo off
 chcp 65001 >nul
-title PU-Registrator v1.0 - Server
+title PU-Registrator 2.0 - Server
 color 0B
 
 echo.
-echo  ╔══════════════════════════════════════════════╗
-echo  ║                                              ║
-echo  ║       ПУ-РЕГИСТРАТОР v1.0 — ЗАПУСК          ║
-echo  ║                                              ║
-echo  ╚══════════════════════════════════════════════╝
+echo  ╔══════════════════════════════════════════════════════════╗
+echo  ║                                                          ║
+echo  ║       ПУ-РЕГИСТРАТОР 2.0 — ЗАПУСК                       ║
+echo  ║                                                          ║
+echo  ╚══════════════════════════════════════════════════════════╝
 echo.
 
-REM Проверка наличия Node.js
-where node >nul 2>nul
+cd /d "%~dp0"
+
+REM Проверка Docker
+where docker >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    echo  [ОШИБКА] Node.js не найден!
-    echo  Установите Node.js с https://nodejs.org/
-    echo.
+    echo  [ОШИБКА] Docker не найден!
     pause
     exit /b 1
 )
 
-REM Переход в папку проекта
-cd /d "%~dp0"
+echo  [INFO] Запуск контейнеров...
+docker compose up -d
 
-REM Проверка наличия database.json
-if not exist database.json (
-    echo  [INFO] Создание database.json...
-    echo {"records":[],"version":"1.0","created":"","lastModified":""} > database.json
-)
-
-REM Проверка наличия node_modules
-if not exist node_modules (
-    echo  [INFO] Установка зависимостей...
-    call npm install
+if %ERRORLEVEL% EQU 0 (
     echo.
-)
-
-REM Проверка наличия dist
-if not exist dist (
-    echo  [INFO] Сборка проекта...
-    call npm run build
+    echo  ══════════════════════════════════════════════════════════
     echo.
+    echo  [OK] Сервер запущен!
+    echo.
+    echo  Откройте браузер: http://localhost:8080
+    echo.
+    echo  Для просмотра логов: docker compose logs -f
+    echo  Для остановки: stop.bat
+    echo.
+    echo  ══════════════════════════════════════════════════════════
+) else (
+    echo.
+    echo  [ОШИБКА] Не удалось запустить сервер
+    echo  Проверьте, что Docker запущен
 )
 
-echo  ══════════════════════════════════════════════
-echo.
-echo  [INFO] Запуск сервера...
-echo  [INFO] Откройте браузер: http://localhost:3000
-echo.
-echo  Для остановки сервера:
-echo    - Закройте это окно
-echo    - Или запустите stop.bat
-echo    - Или нажмите Ctrl+C
-echo.
-echo  ══════════════════════════════════════════════
-echo.
-
-REM Запуск сервера
-node server.js
-
-echo.
-echo  [INFO] Сервер остановлен.
 echo.
 pause
